@@ -236,6 +236,68 @@ void sys_debug_va(u64 va)
 int query_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t *pa, pte_t **entry)
 {
 	//lab2
+	ptp_t *l0_ptp, *l1_ptp, *l2_ptp, *l3_ptp, *phys_page;
+	pte_t *pte;
+	int ret;
+
+	// L0 page table
+	l0_ptp = (ptp_t *)pgtbl;
+	ret = get_next_ptp(l0_ptp, 0, va, &l1_ptp, &pte, false);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	// L1 page table
+	ret = get_next_ptp(l1_ptp, 1, va, &l2_ptp, &pte, false);
+
+	if (ret < 0) {
+		return ret;
+	} else {
+		if (ret == NORMAL_PTP) {
+			// continue;
+		} else if (ret == BLOCK_PTP) {
+			*entry = pte;
+			*pa = virt_to_phys((vaddr_t)l2_ptp) + GET_VA_OFFSET_L1(va);
+
+			return 0;
+		}
+	}
+
+	// L2 page table
+	ret = get_next_ptp(l2_ptp, 2, va, &l3_ptp, &pte, false);
+
+	if (ret < 0) {
+		return ret;
+	} else {
+		if (ret == NORMAL_PTP) {
+			// continue;
+		} else if (ret == BLOCK_PTP) {
+			*entry = pte;
+			*pa = virt_to_phys((vaddr_t)l3_ptp) + GET_VA_OFFSET_L2(va);
+
+			return 0;
+		}
+	}
+
+	// L3 page table
+	ret = get_next_ptp(l3_ptp, 3, va, &phys_page, &pte, false);
+
+	if (ret < 0) {
+		return ret;
+	} else {
+		// *entry = pte;
+		// u64 temp = pte->l3_page.pfn;
+		// temp = temp << PAGE_SHIFT;
+		// u64 temp2 = (u64)va & PAGE_MASK;
+		// temp = temp & temp2;
+		// *pa = (paddr_t)temp;
+		*entry = pte;
+		*pa = virt_to_phys((vaddr_t)phys_page) + GET_VA_OFFSET_L3(va);
+
+		return 0;
+	}
+
 	return 0;
 }
 
@@ -258,7 +320,50 @@ int map_range_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t pa,
 		       size_t len, vmr_prop_t flags)
 {
 	//lab2: 
-	
+	ptp_t *l0_ptp, *l1_ptp, *l2_ptp, *l3_ptp, *phys_page;
+	pte_t *pte;
+	int ret;
+
+	size_t n = len/PAGE_SIZE;
+
+	for (int i = 0; i < n; i++) {
+		// fill here
+		// L0 page table
+		l0_ptp = (ptp_t *)pgtbl;
+		ret = get_next_ptp(l0_ptp, 0, va, &l1_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		// L1 page table
+		ret = get_next_ptp(l1_ptp, 1, va, &l2_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		// L2 page table
+		ret = get_next_ptp(l2_ptp, 2, va, &l3_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		// L3 page table
+		ret = get_next_ptp(l3_ptp, 3, va, &phys_page, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		ret = set_pte_flags(pte, flags, KERNEL_PTE);
+		pte->l3_page.pfn = pa >> PAGE_SHIFT;
+		va += PAGE_SIZE;
+		pa += PAGE_SIZE;
+	}
+
+	flush_tlb();
 	return 0;
 }
 
@@ -278,7 +383,60 @@ int map_range_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t pa,
 int unmap_range_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, size_t len)
 {
 	//lab2
+	ptp_t *l0_ptp, *l1_ptp, *l2_ptp, *l3_ptp, *phys_page;
+	pte_t *pte;
+	int ret;
 
+	size_t n = len/PAGE_SIZE;
+
+	for (int i = 0; i < n; i++) {
+		// L0 page table
+		l0_ptp = (ptp_t *)pgtbl;
+		ret = get_next_ptp(l0_ptp, 0, va, &l1_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		// L1 page table
+		ret = get_next_ptp(l1_ptp, 1, va, &l2_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		} else {
+			if (ret == NORMAL_PTP) {
+				// continue;
+			} else if (ret == BLOCK_PTP) {
+				pte->l1_block.is_valid = 0;
+			}
+		}
+
+		// L2 page table
+		ret = get_next_ptp(l2_ptp, 2, va, &l3_ptp, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		} else {
+			if (ret == NORMAL_PTP) {
+				// continue;
+			} else if (ret == BLOCK_PTP) {
+				pte->l2_block.is_valid = 0;
+			}
+		}
+
+		// L3 page table
+		ret = get_next_ptp(l3_ptp, 3, va, &phys_page, &pte, true);
+
+		if (ret < 0) {
+			return ret;
+		}
+
+		pte->l3_page.is_valid = 0;
+		va += PAGE_SIZE;
+	}
+
+
+	flush_tlb();
 	return 0;
 }
 
