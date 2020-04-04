@@ -9,6 +9,10 @@
  *   PURPOSE.
  *   See the Mulan PSL v1 for more details.
  */
+#ifdef CHCORE
+#include <common/util.h>
+#include <common/kmalloc.h>
+#endif
 
 #include <common/mm.h>
 #include <common/kprint.h>
@@ -16,6 +20,7 @@
 
 #include "buddy.h"
 #include "slab.h"
+#include "page_table.h"
 
 extern unsigned long *img_end;
 struct global_mem global_mem;
@@ -47,6 +52,73 @@ unsigned long get_ttbr1()
 	__asm__ ("mrs %0,ttbr1_el1" : "=r"(pgd));
 	return pgd;
 }
+
+#define GET_PADDR_IN_PTE(entry) \
+	(((u64)entry->table.next_table_addr) << PAGE_SHIFT)
+#define GET_NEXT_PTP(entry) phys_to_virt(GET_PADDR_IN_PTE(entry))
+
+#define NORMAL_PTP (0)
+#define BLOCK_PTP  (1)
+
+static int get_next_ptp(ptp_t *cur_ptp, u32 level, vaddr_t va,
+			ptp_t **next_ptp, pte_t **pte, bool alloc)
+{
+	u32 index = 0;
+	pte_t *entry;
+
+	switch (level) {
+	case 0:
+		index = GET_L0_INDEX(va);
+		break;
+	case 1:
+		index = GET_L1_INDEX(va);
+		break;
+	case 2:
+		index = GET_L2_INDEX(va);
+		break;
+	case 3:
+		index = GET_L3_INDEX(va);
+		break;
+	default:
+		BUG_ON(1);
+	}
+
+	entry = &(cur_ptp->ent[index]);
+	if (IS_PTE_INVALID(entry->pte)) {
+		if (alloc == false) {
+			// return -ENOMAPPING;
+		}
+		else {
+			/* alloc a new page table page */
+			ptp_t *new_ptp;
+			paddr_t new_ptp_paddr;
+			pte_t new_pte_val;
+
+			/* alloc a single physical page as a new page table page */
+			new_ptp = get_pages(0);
+			BUG_ON(new_ptp == NULL);
+			memset((void *)new_ptp, 0, PAGE_SIZE);
+			new_ptp_paddr = virt_to_phys((vaddr_t)new_ptp);
+
+			new_pte_val.pte = 0;
+			new_pte_val.table.is_valid = 1;
+			new_pte_val.table.is_table = 1;
+			new_pte_val.table.next_table_addr
+				= new_ptp_paddr >> PAGE_SHIFT;
+
+			/* same effect as: cur_ptp->ent[index] = new_pte_val; */
+			entry->pte = new_pte_val.pte;
+		}
+	}
+
+	*next_ptp = (ptp_t *)GET_NEXT_PTP(entry);
+	*pte = entry;
+	if (IS_PTE_TABLE(entry->pte))
+		return NORMAL_PTP;
+	else
+		return BLOCK_PTP;
+}
+
 /*
  * map_kernel_space: map the kernel virtual address 
  * [va:va+size] to physical addres [pa:pa+size].
@@ -57,8 +129,45 @@ unsigned long get_ttbr1()
 void map_kernel_space(vaddr_t va, paddr_t pa, size_t len)
 {
 	//lab2
+	ptp_t *l0_ptp, *l1_ptp, *l2_ptp, *l3_ptp;
+	pte_t *pte;
+	int ret;
+	vaddr_t *pgtbl = (vaddr_t *)(get_ttbr1());
 
+	size_t n = len/2097152;
 
+	for (int i = 0; i < n; i++) {
+		// L0 page table
+		l0_ptp = (ptp_t *)pgtbl;
+		ret = get_next_ptp(l0_ptp, 0, va, &l1_ptp, &pte, true);
+
+		if (ret < 0) {
+			// return ret;
+		}
+
+		// L1 page table
+		ret = get_next_ptp(l1_ptp, 1, va, &l2_ptp, &pte, true);
+
+		if (ret < 0) {
+			// return ret;
+		}
+
+		// L2 page table
+		ret = get_next_ptp(l2_ptp, 2, va, &l3_ptp, &pte, true);
+
+		if (ret < 0) {
+			// return ret;
+		}
+
+		pte->l2_block.pfn = pa >> 21;
+		pte->l2_block.UXN = 1;
+		pte->l2_block.AF = 1;
+		pte->l2_block.SH = 3;
+		pte->l2_block.is_valid = 1;
+		pte->l2_block.is_table = 0;
+		va += 2097152;
+		pa += 2097152;
+	}
 }
 
 
