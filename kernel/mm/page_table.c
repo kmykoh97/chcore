@@ -42,6 +42,7 @@ void set_page_table(paddr_t pgtbl)
  */
 static int set_pte_flags(pte_t *entry, vmr_prop_t flags, int kind)
 {
+	if (kind == USER_PTE) {
 	if (flags & VMR_WRITE)
 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
 	else
@@ -64,7 +65,58 @@ static int set_pte_flags(pte_t *entry, vmr_prop_t flags, int kind)
 	entry->l3_page.attr_index = NORMAL_MEMORY;
 
 	return 0;
+	}
+
+	else { // for kernel
+	entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+	entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PX;
+	entry->l3_page.AF = ARM64_MMU_ATTR_PAGE_AF_NONE;
+	entry->l3_page.SH = INNER_SHAREABLE;
+	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+	return 0;
+	}
 }
+
+// static int set_pte_flags_challenge(pte_t *entry, vmr_prop_t flags, int kind)
+// {
+// 	if (kind == USER_PTE) {
+// 	if (flags & VMR_WRITE)
+// 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+// 	else
+// 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RO_EL0_RO;
+
+// 	if (flags & VMR_EXEC)
+// 		entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+// 	else
+// 		entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UXN;
+
+// 	// EL1 cannot directly execute EL0 accessiable region.
+// 	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PXN;
+// 	entry->l3_page.AF  = ARM64_MMU_ATTR_PAGE_AF_ACCESSED;
+
+// 	// not global
+// 	//entry->l3_page.nG = 1;
+// 	// inner sharable
+// 	entry->l3_page.SH = INNER_SHAREABLE;
+// 	// memory type
+// 	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+// 	return 0;
+// 	}
+
+// 	else { // for kernel
+// 	entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+// 	entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+// 	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PX;
+// 	entry->l3_page.AF = ARM64_MMU_ATTR_PAGE_AF_NONE;
+// 	entry->l3_page.SH = INNER_SHAREABLE;
+// 	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+	// return 0;
+// 	}
+// }
 
 #define GET_PADDR_IN_PTE(entry) \
 	(((u64)entry->table.next_table_addr) << PAGE_SHIFT)
@@ -145,77 +197,6 @@ static int get_next_ptp(ptp_t *cur_ptp, u32 level, vaddr_t va,
 		return NORMAL_PTP;
 	else
 		return BLOCK_PTP;
-}
-
-int debug_query_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t *pa, pte_t **entry)
-{
-	ptp_t *l0_ptp, *l1_ptp, *l2_ptp, *l3_ptp;
-	ptp_t *phys_page;
-	pte_t *pte;
-	int ret;
-
-	// L0 page table
-	l0_ptp = (ptp_t *)pgtbl;
-	ret = get_next_ptp(l0_ptp, 0, va, &l1_ptp, &pte, false);
-	//BUG_ON(ret < 0);
-	if (ret < 0) {
-		printk("[debug_query_in_pgtbl] L0 no mapping.\n");
-		return ret;
-	}
-	printk("L0 pte is 0x%lx\n", pte->pte);
-
-	// L1 page table
-	ret = get_next_ptp(l1_ptp, 1, va, &l2_ptp, &pte, false);
-	//BUG_ON(ret < 0);
-	if (ret < 0) {
-		printk("[debug_query_in_pgtbl] L1 no mapping.\n");
-		return ret;
-	}
-	printk("L1 pte is 0x%lx\n", pte->pte);
-
-	// L2 page table
-	ret = get_next_ptp(l2_ptp, 2, va, &l3_ptp, &pte, false);
-	//BUG_ON(ret < 0);
-	if (ret < 0) {
-		printk("[debug_query_in_pgtbl] L2 no mapping.\n");
-		return ret;
-	}
-	printk("L2 pte is 0x%lx\n", pte->pte);
-
-	// L3 page table
-	ret = get_next_ptp(l3_ptp, 3, va, &phys_page, &pte, false);
-	//BUG_ON(ret < 0);
-	if (ret < 0) {
-		printk("[debug_query_in_pgtbl] L3 no mapping.\n");
-		return ret;
-	}
-	printk("L3 pte is 0x%lx\n", pte->pte);
-
-	*pa = virt_to_phys((vaddr_t)phys_page) + GET_VA_OFFSET_L3(va);
-	*entry = pte;
-	return 0;
-}
-
-void sys_debug_va(u64 va)
-{
-	u64 ttbr0_el1;
-	vaddr_t *pgtbl;
-	paddr_t pa;
-	pte_t *entry;
-	int ret;
-
-#if CHCORE
-	asm volatile ("mrs %0, ttbr0_el1":"=r" (ttbr0_el1));
-#else
-	ttbr0_el1 = 0;
-#endif
-
-	pgtbl = (vaddr_t *)phys_to_virt(ttbr0_el1);
-	ret = debug_query_in_pgtbl(pgtbl, va, &pa, &entry);
-	if (ret < 0)
-		printk("[sys_debug_va] va is not mapped.\n");
-	else
-		printk("[sys_debug_va] va 0x%lx --> pa 0x%lx\n", va, pa);
 }
 
 /*
@@ -357,7 +338,7 @@ int map_range_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t pa,
 			return ret;
 		}
 
-		ret = set_pte_flags(pte, flags, KERNEL_PTE);
+		ret = set_pte_flags(pte, flags, USER_PTE);
 		pte->l3_page.pfn = pa >> PAGE_SHIFT;
 		va += PAGE_SIZE;
 		pa += PAGE_SIZE;
