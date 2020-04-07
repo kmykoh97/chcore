@@ -42,6 +42,7 @@ void set_page_table(paddr_t pgtbl)
  */
 static int set_pte_flags(pte_t *entry, vmr_prop_t flags, int kind)
 {
+	if (kind == USER_PTE) {
 	if (flags & VMR_WRITE)
 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
 	else
@@ -64,7 +65,58 @@ static int set_pte_flags(pte_t *entry, vmr_prop_t flags, int kind)
 	entry->l3_page.attr_index = NORMAL_MEMORY;
 
 	return 0;
+	}
+
+	else { // for kernel
+	entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+	entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PX;
+	entry->l3_page.AF = ARM64_MMU_ATTR_PAGE_AF_NONE;
+	entry->l3_page.SH = INNER_SHAREABLE;
+	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+	return 0;
+	}
 }
+
+// static int set_pte_flags_challenge(pte_t *entry, vmr_prop_t flags, int kind)
+// {
+// 	if (kind == USER_PTE) {
+// 	if (flags & VMR_WRITE)
+// 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+// 	else
+// 		entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RO_EL0_RO;
+
+// 	if (flags & VMR_EXEC)
+// 		entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+// 	else
+// 		entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UXN;
+
+// 	// EL1 cannot directly execute EL0 accessiable region.
+// 	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PXN;
+// 	entry->l3_page.AF  = ARM64_MMU_ATTR_PAGE_AF_ACCESSED;
+
+// 	// not global
+// 	//entry->l3_page.nG = 1;
+// 	// inner sharable
+// 	entry->l3_page.SH = INNER_SHAREABLE;
+// 	// memory type
+// 	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+// 	return 0;
+// 	}
+
+// 	else { // for kernel
+// 	entry->l3_page.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+// 	entry->l3_page.UXN = ARM64_MMU_ATTR_PAGE_UX;
+// 	entry->l3_page.PXN = ARM64_MMU_ATTR_PAGE_PX;
+// 	entry->l3_page.AF = ARM64_MMU_ATTR_PAGE_AF_NONE;
+// 	entry->l3_page.SH = INNER_SHAREABLE;
+// 	entry->l3_page.attr_index = NORMAL_MEMORY;
+
+	// return 0;
+// 	}
+// }
 
 #define GET_PADDR_IN_PTE(entry) \
 	(((u64)entry->table.next_table_addr) << PAGE_SHIFT)
@@ -286,7 +338,7 @@ int map_range_in_pgtbl(vaddr_t *pgtbl, vaddr_t va, paddr_t pa,
 			return ret;
 		}
 
-		ret = set_pte_flags(pte, flags, KERNEL_PTE);
+		ret = set_pte_flags(pte, flags, USER_PTE);
 		pte->l3_page.pfn = pa >> PAGE_SHIFT;
 		va += PAGE_SIZE;
 		pa += PAGE_SIZE;
