@@ -322,8 +322,8 @@ u64 sys_handle_brk(u64 addr) {
 	struct vmspace *vmspace;
 	struct pmobject *pmo;
 	struct vmregion *vmr;
-	size_t len;
-	u64 retval;
+	// size_t len;
+	u64 retval = 0;
 	int ret;
 
 	vmspace = obj_get(current_process, VMSPACE_OBJ_ID, TYPE_VMSPACE);
@@ -349,6 +349,37 @@ u64 sys_handle_brk(u64 addr) {
 	 * top.
 	 *
 	 */
+	if (addr == 0) {
+		pmo = obj_alloc(TYPE_PMO, sizeof(*pmo));
+
+		if (!pmo) {
+			return -ENOMEM;
+		}
+
+		pmo_init(pmo, PMO_ANONYM, 0, 0);
+		ret = cap_alloc(current_process, pmo, 0);
+
+		if (ret < 0) {
+			obj_free(pmo);
+			return ret;
+		}
+
+		vmr = init_heap_vmr(vmspace, vmspace->user_current_heap, pmo);
+
+		if (vmr == NULL) {
+			return -EINVAL;
+		}
+
+		vmspace->heap_vmr = vmr;
+		retval = vmr->start + vmr->size;
+	} else if (addr > (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
+		vmr = vmspace->heap_vmr;
+		vmr->size = addr - vmr->start;
+		vmr->pmo->size = addr - vmr->start;
+		retval = addr;
+	} else if (addr < (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
+		return -EINVAL;
+	}
 
 	/*
 	 * return origin heap addr on failure;

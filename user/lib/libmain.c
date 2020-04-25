@@ -7,10 +7,12 @@ void _start_c(long *p)
 	int argc = p[0];
 	char **argv = (void *)(p+1);
 	char **envp = (void *)(p+3);
-
+	// printf("fck\n");
+	// usys_putc("g");
 	main(argc, argv, envp);
 	/*
 	 * Lab3: Your code here
 	 * Complete the main function
 	 */
+	usys_exit(0);
 }

@@ -16,6 +16,8 @@
 #include <common/printk.h>
 #include <common/types.h>
 
+extern char boot_cpu_stack;
+
 static inline __attribute__((always_inline)) u64 
 read_fp() {
   u64 fp;
@@ -27,9 +29,16 @@ __attribute__((optimize("O1")))
 int
 mon_backtrace()
 {
-  printk("Stack backtrace:\n");
+    printk("Stack backtrace:\n");
 
-	// Your code here.
+    u64 fp = read_fp(); // read reg x29
+    u64 rp;
 
-	return 0;
+    while (fp >= boot_cpu_stack + 0x1000) {
+        rp = *((u64 *)(*((u64 *)fp)) + 1);
+        printk("  LR %p  FP %p  Args %x %x %x %x %x\n", rp, *((u64 *)fp), *((u64 *)fp + 2), *((u64 *)fp + 3), *((u64 *)fp + 4), *((u64 *)fp + 5), *((u64 *)fp + 6));
+        fp = *((u64 *)fp);
+    }
+
+	  return 0;
 }

@@ -141,7 +141,11 @@ u64 switch_context(void)
 	 * Return the correct value in order to make eret_to_thread work correctly
 	 * in main.c
 	 */
-	return 0;
+	target_ctx = target_thread->thread_ctx;
+	u64 ret = (u64)target_ctx;
+
+	return ret;
+	// return 0;
 }
 
 /* SYSCALL functions */
