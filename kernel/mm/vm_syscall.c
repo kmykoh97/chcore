@@ -233,7 +233,6 @@ out_obj_put_vmspace:
 out_obj_put_pmo:
 	obj_put(pmo);
 out_fail:
-	kinfo("testtest = %d\n", r);
 	return r;
 }
 
@@ -342,8 +341,8 @@ u64 sys_handle_brk(u64 addr) {
 	struct vmspace *vmspace;
 	struct pmobject *pmo;
 	struct vmregion *vmr;
-	size_t len;
-	u64 retval;
+	// size_t len;
+	u64 retval = 0;
 	int ret;
 
 	vmspace = obj_get(current_process, VMSPACE_OBJ_ID, TYPE_VMSPACE);
@@ -370,7 +369,6 @@ u64 sys_handle_brk(u64 addr) {
 	 *
 	 */
 	if (addr == 0) {
-		kinfo("1\n");
 		pmo = obj_alloc(TYPE_PMO, sizeof(*pmo));
 
 		if (!pmo) {
@@ -394,13 +392,11 @@ u64 sys_handle_brk(u64 addr) {
 		vmspace->heap_vmr = vmr;
 		retval = vmr->start + vmr->size;
 	} else if (addr > (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
-		kinfo("2\n");
 		vmr = vmspace->heap_vmr;
 		vmr->size = addr - vmr->start;
 		vmr->pmo->size = addr - vmr->start;
 		retval = addr;
 	} else if (addr < (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
-		kinfo("3\n");
 		return -EINVAL;
 	}
 
@@ -408,7 +404,6 @@ u64 sys_handle_brk(u64 addr) {
 	 * return origin heap addr on failure;
 	 * return new heap addr on success.
 	 */
-	kinfo("4\n");
 	obj_put(vmspace);
 	return retval;
 }

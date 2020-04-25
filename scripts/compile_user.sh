@@ -6,7 +6,7 @@ cd user
 
 rm -rf build && mkdir build
 
-C_FLAGS="-O3 -ffreestanding -Wall -g -fPIC -static"
+C_FLAGS="-O3 -ffreestanding -Wall -Werror -fPIC -static"
 
 echo "compiling: aarch64 user directory"
 C_FLAGS="$C_FLAGS -DCONFIG_ARCH_AARCH64"
@@ -24,6 +24,7 @@ mkdir -p ramdisk
 echo "copy user/*.bin to ramdisk."
 cp lab3/*.bin ramdisk/
 
+cp ../../scripts/kirin970-hikey970.dtb ramdisk/
 cd ramdisk
 find . | cpio -o -Hnewc > ../ramdisk.cpio
 echo "succeed in building ramdisk."

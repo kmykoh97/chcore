@@ -66,7 +66,7 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 	struct vmregion *vmr;
 	struct pmobject *pmo;
 	paddr_t pa;
-	u64 offset;
+	// u64 offset;
 
 	/*
 	 * Lab3: your code here
@@ -79,7 +79,7 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 	 * NOTE: when any problem happened in this function, return
 	 * -ENOMAPPING
 	 */
-	// kinfo("handlefault\n");
+
 	vmr = find_vmr_for_va(vmspace, fault_addr);
 
 	if (vmr == NULL) {

@@ -243,7 +243,6 @@ static int ramdisk_read_file(char *path, char **buf)
 
 /* process_create_root: create the root process */
 void process_create_root(char* bin_name) {
-	// printk(bin_name);
 	struct process *root_process;
 	int thread_cap;
 	struct thread *root_thread;

@@ -83,10 +83,8 @@ u64 switch_context(void)
 	 * Return the correct value in order to make eret_to_thread work correctly
 	 * in main.c
 	 */
-	// kinfo("target ctx = 0x%lx\n", (void *)target_thread->thread_ctx);
 	target_ctx = target_thread->thread_ctx;
-	u64 ret = (void *)target_ctx;
-	// kinfo("ret = 0x%lx\n", ret);
+	u64 ret = (u64)target_ctx;
 
 	return ret;
 	// return 0;

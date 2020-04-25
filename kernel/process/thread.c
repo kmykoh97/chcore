@@ -144,11 +144,11 @@ static u64 load_binary(struct process *process,
 		r = -ENOMEM;
 		goto out_fail;
 	}
-	// kinfo("%d\n", elf->header.e_phnum);
+
 	/* load each segment in the elf binary */
 	for (i = 0; i < elf->header.e_phnum; ++i) {
 		pmo_cap[i] = -1;
-		// kinfo("%s\n", "h");
+
 		if (elf->p_headers[i].p_type == PT_LOAD) {
 			/*
 			 * Lab3: Your code here
@@ -163,20 +163,11 @@ static u64 load_binary(struct process *process,
 			 * page aligned segment size. Take care of the page alignment when allocating
 			 * and mapping physical memory.
 			 */
-			// p_offset mod p_align = p_vaddr mod p_align
-			// kinfo("0x%lx\n", elf->p_headers[i].p_filesz);
-			// kinfo("seg_map = 0x%lx\n", elf->p_headers[i].p_memsz);
-			// kinfo("0x%lx\n", elf->p_headers[i].p_align);
-			
-			
 			seg_sz = elf->p_headers[i].p_memsz;
 			p_vaddr = elf->p_headers[i].p_vaddr;
-			size_t alignment = elf->p_headers[i].p_align;
-			// seg_map_sz = ((seg_sz/alignment + 1) * alignment);
-			// seg_map_sz = ROUND_UP(seg_sz, PAGE_SIZE);
+			// size_t alignment = elf->p_headers[i].p_align;
 			seg_map_sz = ROUND_UP(seg_sz + p_vaddr, PAGE_SIZE) - ROUND_DOWN(p_vaddr, PAGE_SIZE);
 
-			// kinfo("seg_map_size after = 0x%lx\n", seg_map_sz);
 			pmo = obj_alloc(TYPE_PMO, sizeof(*pmo));
 			if (!pmo) {
 				r = -ENOMEM;
@@ -194,7 +185,6 @@ static u64 load_binary(struct process *process,
 			 * You should copy data from the elf into the physical memory in pmo.
 			 * The physical address of a pmo can be get from pmo->start.
 			 */
-			// memset((char *)phys_to_virt(pmo->start), 0, size);
 			memset((void *)phys_to_virt(pmo->start), 0, seg_map_sz);
 			memcpy((void *)phys_to_virt(pmo->start) + (p_vaddr & OFFSET_MASK), (void *)(bin + elf->p_headers[i].p_offset), elf->p_headers[i].p_filesz);
 			
@@ -203,14 +193,7 @@ static u64 load_binary(struct process *process,
 			ret = vmspace_map_range(vmspace,
 						ROUND_DOWN(p_vaddr, PAGE_SIZE),
 						seg_map_sz, flags, pmo);
-			// kinfo("pvadr = 0x%lx\n", p_vaddr);
-			// kinfo("pvadrrounddown = 0x%lx\n", ROUND_DOWN(p_vaddr, PAGE_SIZE));
-			// memset((void *)p_vaddr, 0, seg_map_sz);
-			// memcpy((void *)p_vaddr + (p_vaddr & OFFSET_MASK), (void *)(bin + elf->p_headers[i].p_offset), elf->p_headers[i].p_filesz);
-			// memset((char *)phys_to_virt(pmo->start), 0, seg_map_sz);
-			// memcpy((char *)phys_to_virt(pmo->start), (char *)(bin + elf->p_headers[i].p_offset), seg_sz);
 
-			// ret = vmspace_unmap_range(vmspace, ROUND_DOWN(p_vaddr, PAGE_SIZE), seg_map_sz);
 			BUG_ON(ret != 0);
 		}
 	}
@@ -350,5 +333,5 @@ void sys_exit(int ret)
 	current_threads[cpuid] = NULL;
 	break_point();
 
-	// BUG_ON(1); // need to remove
+	// BUG_ON(1);
 }
