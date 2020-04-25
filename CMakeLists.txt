@@ -31,8 +31,12 @@ execute_process (
 set(CMAKE_C_FLAGS_RELEASE "-O1 -g2")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 
+#set(CMAKE_C_FLAGS
+ #   "-Wall -fPIC -nostdlib -nostartfiles -ffreestanding -Werror \
+  #  -DCHCORE -nostdinc ")
+
 set(CMAKE_C_FLAGS
-    "-Wall -fPIC -nostdlib -nostartfiles -ffreestanding -Werror \
+    "-Wall -fPIC -nostdlib -nostartfiles -ffreestanding \
     -DCHCORE -nostdinc ")
 
 project (chos C ASM)

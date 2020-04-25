@@ -35,26 +35,34 @@ static void printk_write_string(const char *str)
 // Remember the most significant digit is printed first.
 static void printk_write_num(int base, unsigned long long n, int neg)
 {
-//   static const char hex[] = "0123456789abcdef";
-//   char buff[MAX_INT_BUFF_SIZE];
-//   // TODO: fill this function.
-//   (void) buff;  // delete it
-//   (void) hex;   // delete it
-
 	static const char hex[] = "0123456789abcdef";
 	char buff[MAX_INT_BUFF_SIZE];
-	int i = MAX_INT_BUFF_SIZE - 2;
-	unsigned long temp = n;
+	int k = MAX_INT_BUFF_SIZE - 1;
 
+	/* Special case for "0". */
 	if (n == 0) {
 		printk_write_string("0");
+		return;
 	}
 
-	for (; temp && i; --i, temp /= base) {
-		buff[i] = hex[temp % base];
+	/* NUL-terminate. */
+	buff[k--] = 0;
+
+	/* Generate the number. */
+	while (n > 0) {
+		buff[k] = hex[n % base];
+		n /= base;
+		k--;
 	}
 
-	printk_write_string(&buff[i+1]);
+	/* negative decimal number */
+	if ((base == 10) && (neg == 1)) {
+		buff[k] = '-';
+		k--;
+	}
+
+	/* Print the number. */
+	printk_write_string(&buff[k + 1]);
 }
 
 void printk_format(char *format, va_list args)

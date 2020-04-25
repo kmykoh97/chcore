@@ -72,7 +72,7 @@ void print_format(char *format, va_list args)
 	for (i = 0; format[i] != 0; i++) {
 		/* Handle simple characters. */
 		if (!escape_mode && format[i] != '%') {
-			if ( format[i] == '\n' ){
+			if ( format[i] == '\n' ) {
 				usys_putc('\r');
 				usys_putc('\n');
 			} else {

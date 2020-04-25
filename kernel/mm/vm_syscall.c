@@ -233,6 +233,7 @@ out_obj_put_vmspace:
 out_obj_put_pmo:
 	obj_put(pmo);
 out_fail:
+	kinfo("testtest = %d\n", r);
 	return r;
 }
 

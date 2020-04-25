@@ -58,6 +58,17 @@ void init_thread_ctx(struct thread *thread, u64 stack, u64 func, u32 prio,
 	/* Fill the context of the thread */
 
 	/* Set thread type */
+	// kinfo("0x%lx\n", stack);
+	// kinfo("0x%lx\n", func);
+	// kinfo("0x%x\n", prio);
+	// kinfo("0x%x\n", type);
+	// kinfo("0x%d\n", aff);
+	arch_set_thread_stack(thread, stack);
+	arch_set_thread_next_ip(thread, func);
+	// kinfo("0x%lx\n", thread->thread_ctx->ec.reg[SPSR_EL1]);
+	thread->thread_ctx->ec.reg[SPSR_EL1] = SPSR_EL1_EL0t;
+	// kinfo("0x%lx\n", thread->thread_ctx->ec.reg[SPSR_EL1]);
+	// kinfo("0x%lx\n", arch_get_thread_stack(thread));
 	thread->thread_ctx->type = type;
 }
 

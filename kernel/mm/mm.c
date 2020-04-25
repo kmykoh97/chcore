@@ -159,14 +159,17 @@ void map_kernel_space(vaddr_t va, paddr_t pa, size_t len)
 			// return ret;
 		}
 
-		pte->l2_block.pfn = pa >> 21;
+		// pte->pte = 0;
+		// pte->l2_block.AP = ARM64_MMU_ATTR_PAGE_AP_HIGH_RW_EL0_RW;
+		pte->l3_page.pfn = pa >> PAGE_SHIFT;
 		pte->l2_block.UXN = 1;
 		pte->l2_block.AF = 1;
 		pte->l2_block.SH = 3;
+		pte->l2_block.attr_index = 4;
 		pte->l2_block.is_valid = 1;
 		pte->l2_block.is_table = 0;
-		va += 2097152;
-		pa += 2097152;
+		va += 0x200000;
+		pa += 0x200000;
 	}
 }
 
