@@ -79,7 +79,27 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 	 * NOTE: when any problem happened in this function, return
 	 * -ENOMAPPING
 	 */
+	// kinfo("handlefault\n");
+	vmr = find_vmr_for_va(vmspace, fault_addr);
 
+	if (vmr == NULL) {
+		return -ENOMAPPING;
+	}
+
+	pmo = vmr->pmo;
+
+	if (pmo->type != PMO_ANONYM) {
+		return -ENOMAPPING;
+	}
+
+	pa = (paddr_t)virt_to_phys(kmalloc(pmo->size));
+	pmo->start = pa;
+	// pmo->start = (paddr_t)virt_to_phys(vaddrtemp);
+	// int ret = vmspace_map_range(vmspace, vaddrtemp, pmo->size, VMR_EXEC | VMR_READ | VMR_WRITE, pmo);
+	// fill_page_table(vmspace, vmr);
+	int ret = map_range_in_pgtbl(vmspace->pgtbl, fault_addr, pa, pmo->size, vmr->perm);
+
+	if (ret != 0) return -ENOMAPPING;
 	return 0;
 }
 

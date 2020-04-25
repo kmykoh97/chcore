@@ -369,11 +369,46 @@ u64 sys_handle_brk(u64 addr) {
 	 * top.
 	 *
 	 */
+	if (addr == 0) {
+		kinfo("1\n");
+		pmo = obj_alloc(TYPE_PMO, sizeof(*pmo));
+
+		if (!pmo) {
+			return -ENOMEM;
+		}
+
+		pmo_init(pmo, PMO_ANONYM, 0, 0);
+		ret = cap_alloc(current_process, pmo, 0);
+
+		if (ret < 0) {
+			obj_free(pmo);
+			return ret;
+		}
+
+		vmr = init_heap_vmr(vmspace, vmspace->user_current_heap, pmo);
+
+		if (vmr == NULL) {
+			return -EINVAL;
+		}
+
+		vmspace->heap_vmr = vmr;
+		retval = vmr->start + vmr->size;
+	} else if (addr > (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
+		kinfo("2\n");
+		vmr = vmspace->heap_vmr;
+		vmr->size = addr - vmr->start;
+		vmr->pmo->size = addr - vmr->start;
+		retval = addr;
+	} else if (addr < (vmspace->heap_vmr->start + vmspace->heap_vmr->size)) {
+		kinfo("3\n");
+		return -EINVAL;
+	}
 
 	/*
 	 * return origin heap addr on failure;
 	 * return new heap addr on success.
 	 */
+	kinfo("4\n");
 	obj_put(vmspace);
 	return retval;
 }

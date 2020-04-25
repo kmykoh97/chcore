@@ -92,6 +92,7 @@ struct vmregion *find_vmr_for_va(struct vmspace *vmspace, vaddr_t addr)
 {
 	struct vmregion *vmr;
 	vaddr_t start, end;
+	// kinfo("sex\n");
 
 	/* TODO: use safe mode, otherwise, the list may be modified */
 	for_each_in_list(vmr, struct vmregion, node, &(vmspace->vmr_list)) {
@@ -100,6 +101,7 @@ struct vmregion *find_vmr_for_va(struct vmspace *vmspace, vaddr_t addr)
 		if(addr >= start && addr < end)
 			return vmr;
 	}
+	// kinfo("sex2\n");
 	return NULL;
 }
 
