@@ -45,7 +45,7 @@ u32 sys_getc(void)
  */
 u32 sys_get_cpu_id(void)
 {
-	return (u32)-1;
+	return smp_get_cpu_id();
 }
 
 /*
@@ -59,7 +59,7 @@ const void *syscall_table[NR_SYSCALL] = {
 	[SYS_exit] = sys_exit,
 	[SYS_create_pmo] = sys_create_pmo,
 	[SYS_map_pmo] = sys_map_pmo,
-	[SYS_handle_brk] = sys_handle_brk
+	[SYS_handle_brk] = sys_handle_brk,
 	/* lab3 syscalls finished */
 
 	[SYS_getc] = sys_getc,

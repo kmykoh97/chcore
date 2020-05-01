@@ -51,7 +51,22 @@ struct thread idle_threads[PLAT_CPU_NUM];
  */
 int rr_sched_enqueue(struct thread *thread)
 {
-	return -1;
+	if (thread == NULL || thread->thread_ctx == NULL) {
+		return -1;
+	}
+	
+	if (thread->thread_ctx->type == TYPE_IDLE) {
+		return 0;
+	}
+
+	if (thread->thread_ctx->state == TS_READY) {
+		return -1;
+	}
+
+	list_append(&thread->ready_queue_node, &rr_ready_queue[smp_get_cpu_id()]);
+	thread->thread_ctx->state = TS_READY;
+	thread->thread_ctx->cpuid = smp_get_cpu_id();
+	return 0;
 }
 
 /*
@@ -62,7 +77,21 @@ int rr_sched_enqueue(struct thread *thread)
  */
 int rr_sched_dequeue(struct thread *thread)
 {
-	return -1;
+	if (thread == NULL || thread->thread_ctx == NULL) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->type == TYPE_IDLE) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->state == TS_RUNNING) {
+		return -1;
+	}
+	
+	list_del(&thread->ready_queue_node);
+	thread->thread_ctx->state = TS_INTER;
+	return 0;
 }
 
 /*
@@ -78,6 +107,15 @@ int rr_sched_dequeue(struct thread *thread)
  */
 struct thread *rr_sched_choose_thread(void)
 {
+	// first check empty
+	if (list_empty(&rr_ready_queue[smp_get_cpu_id()])) {
+		return &idle_threads[smp_get_cpu_id()];
+	} else {
+		struct thread *thtemp = list_entry(rr_ready_queue[smp_get_cpu_id()].next, struct thread, ready_queue_node);
+		rr_sched_dequeue(thtemp);
+		return thtemp;
+	}
+	
 	return NULL;
 }
 
@@ -95,9 +133,14 @@ struct thread *rr_sched_choose_thread(void)
  */
 int rr_sched(void)
 {
+	if (current_threads[smp_get_cpu_id()] != NULL) {
+		rr_sched_enqueue(current_threads[smp_get_cpu_id()]);
+	}
+	
 	/* You need to use pointer of chosen thread to replace the NULL */
-	switch_to_thread(NULL);
-	return -1;
+	struct thread* th = rr_sched_choose_thread();
+	switch_to_thread(th);
+	return 0;
 }
 
 /*

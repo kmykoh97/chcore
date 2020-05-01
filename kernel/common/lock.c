@@ -104,6 +104,7 @@ void unlock(struct lock *lock)
 	 * Unlock the ticket lock here
 	 * Your code should be no more than 5 lines
 	*/
+	lock->owner += 1 ;
 }
 
 /** 
@@ -112,7 +113,14 @@ void unlock(struct lock *lock)
  * Return 1 if locked, 0 otherwise
  * Your code should be no more than 5 lines
 */
-int is_locked(struct lock *lock) { return -1; }
+int is_locked(struct lock *lock) { 
+	// return -1;
+	if (lock->owner == lock->next) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
 
 
 /**
@@ -121,6 +129,7 @@ int is_locked(struct lock *lock) { return -1; }
  */
 void kernel_lock_init(void)
 {
+	lock_init(&big_kernel_lock);
 }
 
 /**
@@ -129,6 +138,13 @@ void kernel_lock_init(void)
  */
 void lock_kernel(void)
 {
+	// if (is_locked(big_kernel_lock)) {
+	// 	// do nothing if locked
+	// } else {
+	// 	lock(big_kernel_lock);
+	// }
+
+	lock(&big_kernel_lock);
 }
 
 /**
@@ -137,4 +153,5 @@ void lock_kernel(void)
  */
 void unlock_kernel(void)
 {
+	unlock(&big_kernel_lock);
 }

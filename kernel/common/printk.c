@@ -35,12 +35,6 @@ static void printk_write_string(const char *str)
 // Remember the most significant digit is printed first.
 static void printk_write_num(int base, unsigned long long n, int neg)
 {
-<<<<<<< HEAD
-  static const char hex[] = "0123456789abcdef";
-  char buff[MAX_INT_BUFF_SIZE];
-  (void) buff;  // delete it
-  (void) hex;   // delete it
-=======
 	static const char hex[] = "0123456789abcdef";
 	char buff[MAX_INT_BUFF_SIZE];
 	int k = MAX_INT_BUFF_SIZE - 1;
@@ -66,7 +60,6 @@ static void printk_write_num(int base, unsigned long long n, int neg)
 		buff[k] = '-';
 		k--;
 	}
->>>>>>> lab3
 
 	/* Print the number. */
 	printk_write_string(&buff[k + 1]);
