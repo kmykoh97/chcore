@@ -387,6 +387,11 @@ int sys_set_affinity(u64 thread_cap, s32 aff)
 	* Lab 4
 	* Finish the sys_set_affinity
 	*/
+	if (thread == NULL) {
+		return -1;
+	}
+
+	thread->thread_ctx->affinity = aff;
 
 	if (thread_cap != -1)
 		obj_put((void *)thread);
@@ -412,6 +417,11 @@ int sys_get_affinity(u64 thread_cap)
 	* Lab 4
 	* Finish the sys_get_affinity
 	*/
+	if (thread == NULL) {
+		return -1;
+	}
+	
+	aff = thread->thread_ctx->affinity;
 
 	if (thread_cap != -1)
 		obj_put((void *)thread);

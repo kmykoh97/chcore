@@ -32,7 +32,7 @@ void exception_init_per_cpu(void)
 	 * Uncomment the timer_init() when you are handling preemptive
 	 * shceduling
 	 */
-	// timer_init();
+	timer_init();
 
 	/**
 	 * Lab3: Your code here
@@ -75,9 +75,11 @@ void handle_entry_c(int type, u64 esr, u64 address)
 	 * esr.h may help.
 	 */
 	case ESR_EL1_EC_DABT_LEL:
+		// kinfo("Interrupt type: %d, ESR: 0x%lx, Fault address: 0x%lx, EC 0b%b\n", type, esr, address, esr_ec);
 		do_page_fault(esr, address);
 		break;
 	case ESR_EL1_EC_DABT_CEL:
+		// kinfo("Interrupt type: %d, ESR: 0x%lx, Fault address: 0x%lx, EC 0b%b\n", type, esr, address, esr_ec);
 		do_page_fault(esr, address);
 		break;
 	default:

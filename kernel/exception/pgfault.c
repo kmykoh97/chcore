@@ -92,7 +92,8 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 		return -ENOMAPPING;
 	}
 
-	pa = (paddr_t)virt_to_phys(kmalloc(pmo->size));
+	// pa = (paddr_t)virt_to_phys(kmalloc(pmo->size));
+	pa = (paddr_t)virt_to_phys(get_pages(0));
 	pmo->start = pa;
 	// pmo->start = (paddr_t)virt_to_phys(vaddrtemp);
 	// int ret = vmspace_map_range(vmspace, vaddrtemp, pmo->size, VMR_EXEC | VMR_READ | VMR_WRITE, pmo);
