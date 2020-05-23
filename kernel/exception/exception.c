@@ -83,6 +83,7 @@ void handle_entry_c(int type, u64 esr, u64 address)
 		do_page_fault(esr, address);
 		break;
 	default:
+		// kinfo("Interrupt type: %d, ESR: 0x%lx, Fault address: 0x%lx, EC 0b%b\n", type, esr, address, esr_ec);
 		kdebug("Unsupported Exception ESR %lx\n", esr);
 		kinfo(UNKNOWN);
 		sys_exit(-ESUPPORT);
