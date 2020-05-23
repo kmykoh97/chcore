@@ -162,13 +162,14 @@ static u64 load_binary(struct process *process,
 	/* load each segment in the elf binary */
 	for (i = 0; i < elf->header.e_phnum; ++i) {
 		pmo_cap[i] = -1;
+
 		if (elf->p_headers[i].p_type == PT_LOAD) {
 			/*
 			 * Lab3: Your code here
 			 * prepare the arguments for the two following function calls: pmo_init
 			 * and vmspace_map_range.
 			 * pmo_init allocates the demanded size of physical memory for the PMO.
-			 * vmspace_map_range maps the pmo to a sepcific virtual memory address.
+			 * vmspace_map_range maps the pmo to a specific virtual memory address.
 			 * You should get the size of current segment and the virtual address
 			 * to be mapped from elf headers.
 			 * HINT: we suggest you use the seg_sz and p_vaddr variables for
@@ -176,6 +177,10 @@ static u64 load_binary(struct process *process,
 			 * page aligned segment size. Take care of the page alignment when allocating
 			 * and mapping physical memory.
 			 */
+			seg_sz = elf->p_headers[i].p_memsz;
+			p_vaddr = elf->p_headers[i].p_vaddr;
+			// size_t alignment = elf->p_headers[i].p_align;
+			seg_map_sz = ROUND_UP(seg_sz + p_vaddr, PAGE_SIZE) - ROUND_DOWN(p_vaddr, PAGE_SIZE);
 
 			pmo = obj_alloc(TYPE_PMO, sizeof(*pmo));
 			if (!pmo) {
@@ -194,7 +199,9 @@ static u64 load_binary(struct process *process,
 			 * You should copy data from the elf into the physical memory in pmo.
 			 * The physical address of a pmo can be get from pmo->start.
 			 */
-
+			memset((void *)phys_to_virt(pmo->start), 0, seg_map_sz);
+			memcpy((void *)phys_to_virt(pmo->start) + (p_vaddr & OFFSET_MASK), (void *)(bin + elf->p_headers[i].p_offset), elf->p_headers[i].p_filesz);
+			
 			flags = PFLAGS2VMRFLAGS(elf->p_headers[i].p_flags);
 
 			ret = vmspace_map_range(vmspace,
@@ -380,6 +387,11 @@ int sys_set_affinity(u64 thread_cap, s32 aff)
 	* Lab 4
 	* Finish the sys_set_affinity
 	*/
+	if (thread == NULL) {
+		return -1;
+	}
+
+	thread->thread_ctx->affinity = aff;
 
 	if (thread_cap != -1)
 		obj_put((void *)thread);
@@ -405,6 +417,11 @@ int sys_get_affinity(u64 thread_cap)
 	* Lab 4
 	* Finish the sys_get_affinity
 	*/
+	if (thread == NULL) {
+		return -1;
+	}
+	
+	aff = thread->thread_ctx->affinity;
 
 	if (thread_cap != -1)
 		obj_put((void *)thread);

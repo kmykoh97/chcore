@@ -51,7 +51,36 @@ struct thread idle_threads[PLAT_CPU_NUM];
  */
 int rr_sched_enqueue(struct thread *thread)
 {
-	return -1;
+	if (thread == NULL || thread->thread_ctx == NULL) {
+		return -1;
+	}
+	
+	if (thread->thread_ctx->type == TYPE_IDLE) {
+		return 0;
+	}
+
+	if (thread->thread_ctx->state == TS_READY) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->affinity == NO_AFF) {
+		list_append(&thread->ready_queue_node, &rr_ready_queue[smp_get_cpu_id()]);
+		thread->thread_ctx->state = TS_READY;
+		thread->thread_ctx->cpuid = smp_get_cpu_id();
+	} else {
+		if (thread->thread_ctx->affinity < 0 || thread->thread_ctx->affinity > PLAT_CPU_NUM) {
+			return -1;
+		}
+
+		list_append(&thread->ready_queue_node, &rr_ready_queue[thread->thread_ctx->affinity]);
+		thread->thread_ctx->state = TS_READY;
+		thread->thread_ctx->cpuid = thread->thread_ctx->affinity;
+	}
+
+	// list_append(&thread->ready_queue_node, &rr_ready_queue[smp_get_cpu_id()]);
+	// thread->thread_ctx->state = TS_READY;
+	// thread->thread_ctx->cpuid = smp_get_cpu_id();
+	return 0;
 }
 
 /*
@@ -62,7 +91,27 @@ int rr_sched_enqueue(struct thread *thread)
  */
 int rr_sched_dequeue(struct thread *thread)
 {
-	return -1;
+	if (thread == NULL || thread->thread_ctx == NULL) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->type == TYPE_IDLE) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->state == TS_RUNNING) {
+		return -1;
+	}
+
+	if (thread->thread_ctx->affinity != NO_AFF) {
+		if (thread->thread_ctx->affinity < 0 || thread->thread_ctx->affinity > PLAT_CPU_NUM) {
+			return -1;
+		}
+	}
+	
+	list_del(&thread->ready_queue_node);
+	thread->thread_ctx->state = TS_INTER;
+	return 0;
 }
 
 /*
@@ -78,6 +127,15 @@ int rr_sched_dequeue(struct thread *thread)
  */
 struct thread *rr_sched_choose_thread(void)
 {
+	// first check empty
+	if (list_empty(&rr_ready_queue[smp_get_cpu_id()])) {
+		return &idle_threads[smp_get_cpu_id()];
+	} else {
+		struct thread *thtemp = list_entry(rr_ready_queue[smp_get_cpu_id()].next, struct thread, ready_queue_node);
+		rr_sched_dequeue(thtemp);
+		return thtemp;
+	}
+	
 	return NULL;
 }
 
@@ -95,9 +153,24 @@ struct thread *rr_sched_choose_thread(void)
  */
 int rr_sched(void)
 {
+	if (current_threads[smp_get_cpu_id()] != NULL) {
+		if (current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget == 0) {
+			current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget = DEFAULT_BUDGET;
+			rr_sched_enqueue(current_threads[smp_get_cpu_id()]);
+			struct thread* th = rr_sched_choose_thread();
+			switch_to_thread(th);
+			return 0;
+		} else {
+			current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget = DEFAULT_BUDGET;
+			return 0;
+		}
+	}
+	
 	/* You need to use pointer of chosen thread to replace the NULL */
-	switch_to_thread(NULL);
-	return -1;
+	struct thread* th = rr_sched_choose_thread();
+	th->thread_ctx->sc->budget = DEFAULT_BUDGET;
+	switch_to_thread(th);
+	return 0;
 }
 
 /*
@@ -138,6 +211,21 @@ int rr_sched_init(void)
  */
 void rr_sched_handle_timer_irq(void)
 {
+	if (current_threads[smp_get_cpu_id()] != NULL) {
+		if (current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget == 0) {
+			current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget = DEFAULT_BUDGET;
+			rr_sched_enqueue(current_threads[smp_get_cpu_id()]);
+			struct thread* th = rr_sched_choose_thread();
+			switch_to_thread(th);
+			return;
+		} else {
+			current_threads[smp_get_cpu_id()]->thread_ctx->sc->budget--;
+			return;
+		}
+	}
+	
+	rr_sched();
+	return;
 }
 
 struct sched_ops rr = {

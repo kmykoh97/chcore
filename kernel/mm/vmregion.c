@@ -97,6 +97,7 @@ struct vmregion *find_vmr_for_va(struct vmspace *vmspace, vaddr_t addr)
 		if(addr >= start && addr < end)
 			return vmr;
 	}
+
 	return NULL;
 }
 

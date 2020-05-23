@@ -1,0 +1,20 @@
+Make a brief explanation: In which file or code segment specifies the CHcore physical memory layout. You can answer this question in two aspects: the compilation phase and runtime phase?
+- In compilation phase, they are defined in linker-aarch64.lds.in file, where those constants such as img_start, img_end, ... are defined and will be calculated during compilation time by linker.
+- In runtime phase, the structures are defined by struct in buddy_struct.h and initialised by some init functions in mm.c such as void mm_init(void *info) invoking functions in buddy.c
+
+Assuming that the following CHcore kernel code is correct, which type should variable x have, vaddr_t or paddr_t?
+-  vaddr_t
+
+How much space overhead is there for managing memory, if we actually had the 4G physical memory? How is this overhead broken down?
+-  ((4G/4k)/512/512/512) +  ((4G/4k)/512/512) +  ((4G/4k)/512) space overhead
+
+Summarize the difference between X86 and ARMaddress translation mechanisms, what is the advantage of arm-smmu architecture design?
+- arm has advatage of more efficient address translation and can handle multiple security level page tables through more ttbr registers
+
+Why CHcore organize the kernel page table in  block entry? Which range of virtual address space must map in the boot time and which can delay until the kernel starts?
+- first 128 mb must be mapped first as they are used in init. The later memory can be mapped later as not needed for boot
+
+Why will user programs not be able to read or write the kernel's memory? What specific mechanisms protect the kernel memory?
+- user cannot read kernel memory for security. There is a access flag in pte to indicate each page or block's permission. This is to isolate user space and kernel space in memory to prevent user from gaining too much permission
+
+challenge 1: use the given kind to set condition for different flags. Give all permission to kernel space map

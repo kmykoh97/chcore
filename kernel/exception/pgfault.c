@@ -66,7 +66,7 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 	struct vmregion *vmr;
 	struct pmobject *pmo;
 	paddr_t pa;
-	u64 offset;
+	// u64 offset;
 
 	/*
 	 * Lab3: your code here
@@ -80,6 +80,27 @@ int handle_trans_fault(struct vmspace *vmspace, vaddr_t fault_addr)
 	 * -ENOMAPPING
 	 */
 
+	vmr = find_vmr_for_va(vmspace, fault_addr);
+
+	if (vmr == NULL) {
+		return -ENOMAPPING;
+	}
+
+	pmo = vmr->pmo;
+
+	if (pmo->type != PMO_ANONYM) {
+		return -ENOMAPPING;
+	}
+
+	// pa = (paddr_t)virt_to_phys(kmalloc(pmo->size));
+	pa = (paddr_t)virt_to_phys(get_pages(0));
+	pmo->start = pa;
+	// pmo->start = (paddr_t)virt_to_phys(vaddrtemp);
+	// int ret = vmspace_map_range(vmspace, vaddrtemp, pmo->size, VMR_EXEC | VMR_READ | VMR_WRITE, pmo);
+	// fill_page_table(vmspace, vmr);
+	int ret = map_range_in_pgtbl(vmspace->pgtbl, fault_addr, pa, pmo->size, vmr->perm);
+
+	if (ret != 0) return -ENOMAPPING;
 	return 0;
 }
 

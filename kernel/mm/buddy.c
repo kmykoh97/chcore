@@ -15,7 +15,6 @@
 #include <common/macro.h>
 #include <common/kprint.h>
 
-
 #include "buddy.h"
 
 
@@ -34,10 +33,22 @@ static inline void set_page_order_buddy(struct page *page, u64 order)
 	page->flags |= (1UL << PG_buddy);
 }
 
+static inline void set_page_order_head(struct page *page, u64 order)
+{
+	page->order = order;
+	page->flags |= (1UL << PG_head);
+}
+
 static inline void clear_page_order_buddy(struct page *page)
 {
 	page->order = 0;
 	page->flags &= ~(1UL << PG_buddy);
+}
+
+static inline void clear_page_order_head(struct page *page)
+{
+	page->order = 0;
+	page->flags &= ~(1UL << PG_head);
 }
 
 static inline u64 get_order(struct page *page)
@@ -98,9 +109,13 @@ static void split(struct global_mem *zone, struct page *page,
 		list_add(&page[size].list_node, &list->list_head);
 		list->nr_free++;
 		// set page order
-		set_page_order_buddy(&page[size], high_order);
+		clear_page_order_buddy(page);
+		set_page_order_head(page, high_order);
+		clear_page_order_buddy(&page[size]);
+		set_page_order_head(&page[size], high_order);
 	}
 }
+
 /*
  * __aloc_page: get free page from buddy system(called by buddy_get_pages)
  * 
@@ -113,13 +128,42 @@ static void split(struct global_mem *zone, struct page *page,
 static struct page *__alloc_page(struct global_mem *zone, u64 order)
 {
 	//lab2
-	return NULL;
+	struct free_list* freelist;
+	struct page* page = NULL;
+	u64 temporder = order;
+
+	freelist = zone->free_lists + order;
+
+	while (freelist->nr_free == 0) {
+		temporder++;
+		freelist++;
+	}
+
+	for (int i = 0; i < zone->page_num; i++) {
+		page = zone->first_page + i;
+		
+		if (&page->list_node == (freelist->list_head).prev) {
+			break;
+		}
+	}
+
+	freelist->nr_free--;
+	list_del((freelist->list_head).prev); // remove from free list
+	split(zone, page, order, temporder, freelist);
+
+	return page;
 }
 
 /* check whether the buddy can be merged */
 static inline bool check_buddy(struct page *page, u64 order)
 {
 	return (page->flags & (1UL << PG_buddy))
+		&& (page->order == order);
+}
+
+static inline bool check_head(struct page *page, u64 order)
+{
+	return (page->flags & (1UL << PG_head))
 		&& (page->order == order);
 }
 
@@ -144,7 +188,7 @@ void init_buddy(struct global_mem *zone, struct page *first_page,
 
 	/* init each free list (different orders) */
 	for (i = 0; i < BUDDY_MAX_ORDER; i++) {
-	        list = zone->free_lists + i;
+	    list = zone->free_lists + i;
 		init_list_head(&list->list_head);
 		list->nr_free = 0;
 	}
@@ -162,6 +206,7 @@ void init_buddy(struct global_mem *zone, struct page *first_page,
 
 	kdebug("mm: finish initing buddy memory system.\n");
 }
+
 /*
  * budd_get_pages: get 1<<order continuous pages from buddy system
  * 
@@ -172,9 +217,37 @@ struct page *buddy_get_pages(struct global_mem *zone, u64 order)
 {
 	//lab2
 	struct page *page;
+	if (order >= BUDDY_MAX_ORDER) {
+		return NULL;
+	}
+
+	page = __alloc_page(zone, order);
 
 	return page;
 }
+
+static bool check_merge(struct global_mem* zone, struct page* page, u64 order) 
+{
+	struct page* buddypage = get_buddy_page(zone, page, order);
+	struct free_list* freelist = zone->free_lists + order;
+	struct list_head* templisthead = &freelist->list_head;
+
+	if (order >= BUDDY_MAX_ORDER-1) {
+		return false;
+	}
+
+	// check whether buddypage is used or is free
+	for (int i = 0; i <= freelist->nr_free+1; i++) {
+		if (&buddypage->list_node == templisthead) {
+			return true;
+		}
+
+		templisthead = templisthead->next;
+	}
+
+	return false;
+}
+
 
 /*
  * buddy_free_pages: give back the pages to buddy system
@@ -191,7 +264,58 @@ struct page *buddy_get_pages(struct global_mem *zone, u64 order)
 void buddy_free_pages(struct global_mem *zone, struct page *page)
 {
 	//lab2
+	u64 order = get_order(page);
+	set_page_order_head(page, order);
 
+	// first check whether buddy can merge
+	// if cannot merge
+	if (!check_merge(zone, page, order)) {
+		clear_page_order_buddy(page);
+		set_page_order_head(page, order);
+		struct free_list* freelist = zone->free_lists + order;
+		struct list_head* templisthead = &freelist->list_head;
+
+		for (int i = 0; i <= freelist->nr_free+1; i++) {
+			if (&page->list_node == templisthead) {
+				return;
+			}
+
+			templisthead = templisthead->next;
+		}
+
+		list_add(&page->list_node, &freelist->list_head);
+		freelist->nr_free++;
+
+		return;
+	}
+
+	// if buddy can merge
+	struct page* buddypage = get_buddy_page(zone, page, order);
+	struct free_list* freelist = zone->free_lists + order;
+	struct list_head* templisthead = &freelist->list_head;
+	freelist->nr_free--;
+	list_del(&buddypage->list_node);
+
+	for (int i = 0; i <= freelist->nr_free+1; i++) {
+		if (&page->list_node == templisthead) {
+			freelist->nr_free--;
+			list_del(&page->list_node);
+			break;
+		}
+
+		templisthead = templisthead->next;
+	}
+
+	clear_page_order_head(buddypage);
+	clear_page_order_head(page);
+	set_page_order_buddy(buddypage, order+1);
+	set_page_order_buddy(page, order+1);
+	struct page* mergepage = get_merge_page(zone, page, order);
+	set_page_order_head(mergepage, order+1);
+	freelist = zone->free_lists + order + 1;
+	list_add(&mergepage->list_node, &freelist->list_head);
+	freelist->nr_free++;
+	buddy_free_pages(zone, mergepage);
 }
 
 void *page_to_virt(struct global_mem *zone, struct page *page)

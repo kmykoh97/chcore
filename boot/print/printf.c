@@ -17,12 +17,34 @@ static void write_string(const char *str)
 // Remember the most significant digit is printed first.
 static void write_num(int base, unsigned long n, int neg)
 {
-  static const char hex[] = "0123456789abcdef";
-  char buff[MAX_INT_BUFF_SIZE];
-  // TODO: fill this function.
-  (void) buff;  // delete it 
-  (void) hex;  // delete it
+	static const char hex[] = "0123456789abcdef";
+	char buff[MAX_INT_BUFF_SIZE];
+	int k = MAX_INT_BUFF_SIZE - 1;
 
+	/* Special case for "0". */
+	if (n == 0) {
+		write_string("0");
+		return;
+	}
+
+	/* NUL-terminate. */
+	buff[k--] = 0;
+
+	/* Generate the number. */
+	while (n > 0) {
+		buff[k] = hex[n % base];
+		n /= base;
+		k--;
+	}
+
+	/* negative decimal number */
+	if ((base == 10) && (neg == 1)) {
+		buff[k] = '-';
+		k--;
+	}
+
+	/* Print the number. */
+	write_string(&buff[k + 1]);
 }
 
 void tfp_format(char *format, va_list args)
