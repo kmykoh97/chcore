@@ -1,0 +1,1 @@
+/usr/bin/cc  -fprofile-arcs -ftest-coverage -g   CMakeFiles/test_aarch64_page_table.dir/test_aarch64_page_table.c.o  -o test_aarch64_page_table 

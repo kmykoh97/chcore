@@ -1,0 +1,5 @@
+/chos/tests/mm/page_table/CMakeFiles/rebuild_cache.dir
+/chos/tests/mm/page_table/CMakeFiles/edit_cache.dir
+/chos/tests/mm/page_table/CMakeFiles/test.dir
+/chos/tests/mm/page_table/CMakeFiles/test_aarch64_page_table.dir
+/chos/tests/mm/page_table/CMakeFiles/lcov.dir

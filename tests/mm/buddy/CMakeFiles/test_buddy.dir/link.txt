@@ -1,0 +1,1 @@
+/usr/bin/cc  -fprofile-arcs -ftest-coverage -g   CMakeFiles/test_buddy.dir/test_buddy.c.o CMakeFiles/test_buddy.dir/chos/kernel/mm/buddy.c.o  -o test_buddy -lm 

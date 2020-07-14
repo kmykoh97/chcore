@@ -1,0 +1,5 @@
+/chos/tests/mm/buddy/CMakeFiles/rebuild_cache.dir
+/chos/tests/mm/buddy/CMakeFiles/edit_cache.dir
+/chos/tests/mm/buddy/CMakeFiles/test.dir
+/chos/tests/mm/buddy/CMakeFiles/test_buddy.dir
+/chos/tests/mm/buddy/CMakeFiles/lcov.dir
